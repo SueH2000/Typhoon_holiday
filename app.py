@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-import random
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
+import requests
 from flask import Flask, jsonify, render_template, request
 
 from predict_service import inspect_model_status, load_bundle, predict_probability
@@ -12,20 +12,28 @@ from predict_service import inspect_model_status, load_bundle, predict_probabili
 app = Flask(__name__)
 
 # 初學者說明：
-# 以前只是一個平面清單，現在改成「縣市 -> 地點」兩層資料，
-# 前端可以先選縣市，再選該縣市的地點，使用體驗更接近真實 App。
-COUNTY_LOCATIONS: Dict[str, List[str]] = {
-    "臺北市": ["信義區", "士林區", "南港區"],
-    "新北市": ["板橋區", "淡水區", "新店區"],
-    "桃園市": ["桃園區", "中壢區", "大溪區"],
-    "臺中市": ["西屯區", "豐原區", "沙鹿區"],
-    "臺南市": ["中西區", "永康區", "新營區"],
-    "高雄市": ["前金區", "左營區", "鳳山區"],
-    "宜蘭縣": ["宜蘭市", "羅東鎮", "蘇澳鎮"],
-    "花蓮縣": ["花蓮市", "吉安鄉", "玉里鎮"],
+# 這裡改成「縣市 -> 鄉鎮區 -> 經緯度」。
+# 經緯度是拿來向即時天氣 API 查真實天氣資料。
+COUNTY_TOWNS: Dict[str, Dict[str, Tuple[float, float]]] = {
+    "臺北市": {"中正區": (25.0324, 121.5199), "大安區": (25.0260, 121.5436), "信義區": (25.0331, 121.5662), "士林區": (25.0930, 121.5240)},
+    "新北市": {"板橋區": (25.0119, 121.4628), "三重區": (25.0615, 121.4877), "新店區": (24.9676, 121.5420), "淡水區": (25.1759, 121.4436)},
+    "桃園市": {"桃園區": (24.9936, 121.3010), "中壢區": (24.9650, 121.2243), "平鎮區": (24.9309, 121.2145), "大溪區": (24.8806, 121.2862)},
+    "臺中市": {"西屯區": (24.1810, 120.6451), "北屯區": (24.1888, 120.7254), "豐原區": (24.2520, 120.7223), "沙鹿區": (24.2380, 120.5651)},
+    "臺南市": {"中西區": (22.9967, 120.2035), "永康區": (23.0263, 120.2530), "安平區": (23.0015, 120.1602), "新營區": (23.3066, 120.3167)},
+    "高雄市": {"前金區": (22.6266, 120.2930), "左營區": (22.6877, 120.2927), "鳳山區": (22.6273, 120.3581), "三民區": (22.6467, 120.3171)},
+    "新竹縣": {"竹北市": (24.8387, 121.0040), "竹東鎮": (24.7362, 121.0893), "湖口鄉": (24.9000, 121.0447)},
+    "苗栗縣": {"苗栗市": (24.5602, 120.8214), "頭份市": (24.6882, 120.9121), "苑裡鎮": (24.4399, 120.6530)},
+    "彰化縣": {"彰化市": (24.0685, 120.5575), "員林市": (23.9569, 120.5765), "鹿港鎮": (24.0568, 120.4357)},
+    "雲林縣": {"斗六市": (23.7110, 120.5416), "虎尾鎮": (23.7086, 120.4313), "北港鎮": (23.5752, 120.3030)},
+    "嘉義縣": {"太保市": (23.4584, 120.3320), "朴子市": (23.4645, 120.2466), "民雄鄉": (23.5511, 120.4280)},
+    "屏東縣": {"屏東市": (22.6758, 120.4925), "潮州鎮": (22.5496, 120.5422), "東港鎮": (22.4652, 120.4491)},
+    "宜蘭縣": {"宜蘭市": (24.7520, 121.7545), "羅東鎮": (24.6768, 121.7669), "蘇澳鎮": (24.5942, 121.8512)},
+    "花蓮縣": {"花蓮市": (23.9872, 121.6015), "吉安鄉": (23.9731, 121.5646), "玉里鎮": (23.3364, 121.3131)},
+    "臺東縣": {"臺東市": (22.7583, 121.1444), "關山鎮": (23.0478, 121.1755), "成功鎮": (23.1006, 121.3650)},
 }
 
-ALL_LOCATIONS = [loc for locations in COUNTY_LOCATIONS.values() for loc in locations]
+
+ALL_LOCATIONS = [town for towns in COUNTY_TOWNS.values() for town in towns.keys()]
 
 # 初學者說明：
 # MODEL_MODE=ml -> 用你訓練好的模型
@@ -41,27 +49,46 @@ if MODEL_MODE == "ml":
         MODEL_LOAD_ERROR = str(exc)
 
 
-def get_weather_by_location(location_name: str) -> Dict[str, float | str]:
-    seed_value = sum(ord(c) for c in location_name) + datetime.now(timezone.utc).hour
-    random.seed(seed_value)
-    temperature = round(random.uniform(22, 33), 1)
-    rainfall = round(random.uniform(0, 180), 1)
-    wind_speed = round(random.uniform(10, 65), 1)
+def get_weather_by_location(county: str, town: str) -> Dict[str, float | str]:
+    """使用 Open-Meteo 查詢即時天氣（不需要 API key）。"""
+    lat, lon = COUNTY_TOWNS[county][town]
+    response = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": lat,
+            "longitude": lon,
+            "current": "temperature_2m,precipitation,wind_speed_10m,weather_code",
+            "timezone": "Asia/Taipei",
+        },
+        timeout=10,
+    )
+    response.raise_for_status()
+    current = response.json().get("current", {})
 
-    if rainfall > 120 or wind_speed > 50:
-        description = "豪雨強風"
-    elif rainfall > 60:
-        description = "大雨"
-    elif wind_speed > 35:
-        description = "風勢偏強"
-    else:
-        description = "天氣尚可"
+    weather_code = int(current.get("weather_code", -1))
+    weather_map = {
+        0: "晴朗",
+        1: "大致晴",
+        2: "局部多雲",
+        3: "陰天",
+        45: "有霧",
+        48: "霧淞",
+        51: "毛毛雨",
+        53: "細雨",
+        55: "較強細雨",
+        61: "小雨",
+        63: "中雨",
+        65: "大雨",
+        71: "小雪",
+        80: "陣雨",
+        95: "雷雨",
+    }
 
     return {
-        "temperature_c": temperature,
-        "rainfall_mm": rainfall,
-        "wind_speed_mps": wind_speed,
-        "description": description,
+        "temperature_c": float(current.get("temperature_2m", 0.0)),
+        "rainfall_mm": float(current.get("precipitation", 0.0)),
+        "wind_speed_mps": round(float(current.get("wind_speed_10m", 0.0)) / 3.6, 1),
+        "description": weather_map.get(weather_code, "未知天氣"),
     }
 
 
@@ -148,16 +175,16 @@ def app_model_status():
 
 @app.get("/app/counties")
 def app_counties():
-    return jsonify({"ok": True, "counties": list(COUNTY_LOCATIONS.keys())})
+    return jsonify({"ok": True, "counties": list(COUNTY_TOWNS.keys())})
 
 
 @app.get("/app/locations")
 def app_locations():
     county = request.args.get("county", "").strip()
     if county:
-        if county not in COUNTY_LOCATIONS:
+        if county not in COUNTY_TOWNS:
             return jsonify({"ok": False, "error": "找不到此縣市"}), 404
-        return jsonify({"ok": True, "county": county, "locations": COUNTY_LOCATIONS[county]})
+        return jsonify({"ok": True, "county": county, "locations": list(COUNTY_TOWNS[county].keys())})
 
     return jsonify({"ok": True, "locations": ALL_LOCATIONS})
 
@@ -167,16 +194,22 @@ def app_predict():
     county = request.args.get("county", "").strip()
     location_name = request.args.get("locationName", "").strip()
 
-    if county and county not in COUNTY_LOCATIONS:
+    if county and county not in COUNTY_TOWNS:
         return jsonify({"ok": False, "error": "找不到此縣市"}), 404
+    if not county:
+        return jsonify({"ok": False, "error": "請提供 county"}), 400
     if not location_name:
         return jsonify({"ok": False, "error": "請提供 locationName"}), 400
 
-    valid_locations = COUNTY_LOCATIONS[county] if county else ALL_LOCATIONS
+    valid_locations = list(COUNTY_TOWNS[county].keys()) if county else ALL_LOCATIONS
     if location_name not in valid_locations:
         return jsonify({"ok": False, "error": "此地點不在選擇的縣市內"}), 404
 
-    weather = get_weather_by_location(location_name)
+    try:
+        weather = get_weather_by_location(county, location_name)
+    except requests.RequestException as exc:
+        return jsonify({"ok": False, "error": f"即時天氣服務暫時不可用: {exc}"}), 502
+
     probability = estimate_dayoff_probability(weather)
     return jsonify(
         {

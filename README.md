@@ -1,9 +1,11 @@
 # Typhoon Holiday App（Render/Railway 可部署版）
 
-這份專案現在有兩種模式：
+這份專案現在有兩種模式（且已接入即時天氣 API）：
 
 1. `MODEL_MODE=ml`：使用你的模型檔（正式模式）
 2. `MODEL_MODE=rule`：不需要模型檔，先用規則跑流程（展示模式）
+
+即時天氣來源：`Open-Meteo`（免 API key），會依你選的縣市/鄉鎮區查詢真實天氣。
 
 ---
 
@@ -21,11 +23,8 @@
 
 ### 本機檢查指令
 ```bash
-
 python scripts/check_model_link.py  # 可在專案根目錄直接執行
-
-python scripts/check_model_link.py
-
+# 或：python predict_service.py  # 內建自我檢查
 ```
 
 你會看到每個檔案是 `[OK]` 還是 `[MISSING]`。
@@ -40,6 +39,9 @@ GET /app/model-status
 - 三個模型檔實際路徑
 - 每個檔案是否存在
 - 有沒有載入錯誤
+
+---
+
 
 ### 如果你在 Codespaces 安裝套件時遇到 `ResolutionImpossible`
 這通常是「版本鎖太死」或「網路/鏡像暫時抓不到套件」造成。
