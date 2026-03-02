@@ -8,6 +8,7 @@
 ---
 
 ## 1) 先確認「模型和腳本」有沒有接好
+
 先做「連結檢查」，你會更快定位問題。
 
 ### 你的程式現在怎麼連模型
@@ -40,7 +41,17 @@ GET /app/model-status
 - 每個檔案是否存在
 - 有沒有載入錯誤
 
----
+### 如果你在 Codespaces 安裝套件時遇到 `ResolutionImpossible`
+這通常是「版本鎖太死」或「網路/鏡像暫時抓不到套件」造成。
+
+建議排查順序（初學者好記版）：
+1. 先更新 pip：`python -m pip install --upgrade pip`
+2. 用範圍版本安裝：`python -m pip install -r requirements.txt`
+3. 若你只想先跑網站流程，可先安裝最小集合：
+   `python -m pip install Flask gunicorn requests`
+4. 最後再補 ML 套件（pandas/numpy/scikit-learn/joblib）。
+
+> 觀念：先讓服務跑起來，再補模型依賴，除錯會快很多。
 
 ## 2) 本機啟動
 
@@ -95,8 +106,9 @@ git push origin <你的分支或main>
 拿到網址後依序測：
 1. `/health`
 2. `/app/model-status`
-3. `/app/locations`
-4. `/app/predict?locationName=臺北`
+3. `/app/counties`
+4. `/app/locations?county=臺北市`
+5. `/app/predict?county=臺北市&locationName=信義區`
 
 ---
 
@@ -131,11 +143,8 @@ pip install -r requirements.txt
 3. 先檢查模型路徑（這一步可以快速抓出 80% 的部署問題）：
 
 ```bash
-
 python scripts/check_model_link.py  # 可在專案根目錄直接執行
-
-python scripts/check_model_link.py
-
+# 或：python predict_service.py  # 內建自我檢查
 ```
 
 4. 啟動服務：
@@ -148,7 +157,7 @@ MODEL_MODE=rule python app.py
 6. 驗收 API：
    - `/health`
    - `/app/model-status`
-   - `/app/predict?locationName=臺北`
+   - `/app/predict?county=臺北市&locationName=信義區`
 
 ### 如果你要在 Codespaces 測 `MODEL_MODE=ml`
 - 你需要把三個模型檔放到 repo（或下載到 `models/`）

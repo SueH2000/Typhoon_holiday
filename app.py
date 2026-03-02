@@ -11,7 +11,21 @@ from predict_service import inspect_model_status, load_bundle, predict_probabili
 
 app = Flask(__name__)
 
-LOCATIONS: List[str] = ["臺北", "新北", "桃園", "臺中", "臺南", "高雄", "宜蘭", "花蓮"]
+# 初學者說明：
+# 以前只是一個平面清單，現在改成「縣市 -> 地點」兩層資料，
+# 前端可以先選縣市，再選該縣市的地點，使用體驗更接近真實 App。
+COUNTY_LOCATIONS: Dict[str, List[str]] = {
+    "臺北市": ["信義區", "士林區", "南港區"],
+    "新北市": ["板橋區", "淡水區", "新店區"],
+    "桃園市": ["桃園區", "中壢區", "大溪區"],
+    "臺中市": ["西屯區", "豐原區", "沙鹿區"],
+    "臺南市": ["中西區", "永康區", "新營區"],
+    "高雄市": ["前金區", "左營區", "鳳山區"],
+    "宜蘭縣": ["宜蘭市", "羅東鎮", "蘇澳鎮"],
+    "花蓮縣": ["花蓮市", "吉安鄉", "玉里鎮"],
+}
+
+ALL_LOCATIONS = [loc for locations in COUNTY_LOCATIONS.values() for loc in locations]
 
 # 初學者說明：
 # MODEL_MODE=ml -> 用你訓練好的模型
@@ -59,30 +73,30 @@ def make_ml_feature_row(weather: Dict[str, float | str]) -> Dict[str, float]:
     temp = float(weather["temperature_c"])
     wind = float(weather["wind_speed_mps"])
     return {
-        'Dayoff': 0.0,
-        'Precp': rain,
-        'RH': 80.0,
-        'StnHeight': 30.0,
-        'StnPres': 1008.0,
-        'T.Max': temp + 2,
-        'T.Min': temp - 2,
-        'Temperature': temp,
-        'TyWS': wind,
-        'WDGust_vector_x': 0.10,
-        'WDGust_vector_y': 0.20,
-        'WD_vector_x': 0.05,
-        'WD_vector_y': 0.10,
-        'X10_radius': 120.0,
-        'X7_radius': 240.0,
-        'alert_num': 18.0,
-        'born_spotE': 136.0,
-        'born_spotN': 21.0,
-        'hpa': 960.0,
-        'lat': 25.04,
-        'lon': 121.56,
-        'route_--': 0.0,
-        'route_2': 0.0,
-        'route_3': 1.0,
+        "Dayoff": 0.0,
+        "Precp": rain,
+        "RH": 80.0,
+        "StnHeight": 30.0,
+        "StnPres": 1008.0,
+        "T.Max": temp + 2,
+        "T.Min": temp - 2,
+        "Temperature": temp,
+        "TyWS": wind,
+        "WDGust_vector_x": 0.10,
+        "WDGust_vector_y": 0.20,
+        "WD_vector_x": 0.05,
+        "WD_vector_y": 0.10,
+        "X10_radius": 120.0,
+        "X7_radius": 240.0,
+        "alert_num": 18.0,
+        "born_spotE": 136.0,
+        "born_spotN": 21.0,
+        "hpa": 960.0,
+        "lat": 25.04,
+        "lon": 121.56,
+        "route_--": 0.0,
+        "route_2": 0.0,
+        "route_3": 1.0,
     }
 
 
@@ -132,24 +146,42 @@ def app_model_status():
     )
 
 
+@app.get("/app/counties")
+def app_counties():
+    return jsonify({"ok": True, "counties": list(COUNTY_LOCATIONS.keys())})
+
+
 @app.get("/app/locations")
 def app_locations():
-    return jsonify({"ok": True, "locations": LOCATIONS})
+    county = request.args.get("county", "").strip()
+    if county:
+        if county not in COUNTY_LOCATIONS:
+            return jsonify({"ok": False, "error": "找不到此縣市"}), 404
+        return jsonify({"ok": True, "county": county, "locations": COUNTY_LOCATIONS[county]})
+
+    return jsonify({"ok": True, "locations": ALL_LOCATIONS})
 
 
 @app.get("/app/predict")
 def app_predict():
+    county = request.args.get("county", "").strip()
     location_name = request.args.get("locationName", "").strip()
+
+    if county and county not in COUNTY_LOCATIONS:
+        return jsonify({"ok": False, "error": "找不到此縣市"}), 404
     if not location_name:
         return jsonify({"ok": False, "error": "請提供 locationName"}), 400
-    if location_name not in LOCATIONS:
-        return jsonify({"ok": False, "error": "找不到此地區，請從清單選擇。"}), 404
+
+    valid_locations = COUNTY_LOCATIONS[county] if county else ALL_LOCATIONS
+    if location_name not in valid_locations:
+        return jsonify({"ok": False, "error": "此地點不在選擇的縣市內"}), 404
 
     weather = get_weather_by_location(location_name)
     probability = estimate_dayoff_probability(weather)
     return jsonify(
         {
             "ok": True,
+            "county": county,
             "locationName": location_name,
             "weather": weather,
             "dayoff_probability": probability,
