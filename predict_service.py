@@ -4,9 +4,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
-
 import joblib
 import pandas as pd
+
 
 # 初學者說明：
 # 這個檔案只做一件事：把「模型檔案路徑」和「推論程式」集中管理。
@@ -56,6 +56,9 @@ def inspect_model_status() -> Dict[str, Any]:
 
 
 def load_bundle() -> ModelBundle:
+
+    import joblib
+
     paths = get_model_paths()
     return ModelBundle(
         knn=joblib.load(paths['knn']),
@@ -65,6 +68,9 @@ def load_bundle() -> ModelBundle:
 
 
 def predict_probability(bundle: ModelBundle, row: Dict[str, float]) -> float:
+
+    import pandas as pd
+
     df = pd.DataFrame([row]).copy()
 
     imputed = bundle.knn.transform(df[KNN_COLS])
