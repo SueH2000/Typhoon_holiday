@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
+import joblib
+import pandas as pd
 
 
 # 初學者說明：
@@ -54,6 +56,7 @@ def inspect_model_status() -> Dict[str, Any]:
 
 
 def load_bundle() -> ModelBundle:
+
     import joblib
 
     paths = get_model_paths()
@@ -65,6 +68,7 @@ def load_bundle() -> ModelBundle:
 
 
 def predict_probability(bundle: ModelBundle, row: Dict[str, float]) -> float:
+
     import pandas as pd
 
     df = pd.DataFrame([row]).copy()
@@ -75,17 +79,3 @@ def predict_probability(bundle: ModelBundle, row: Dict[str, float]) -> float:
     scaled = bundle.scaler.transform(df[SCALER_COLS])
     proba = float(bundle.model.predict_proba(scaled)[0][1])
     return round(proba * 100.0, 1)
-
-
-if __name__ == "__main__":
-    # 初學者說明：
-    # 直接執行 `python predict_service.py` 時，先做「模型檔路徑檢查」。
-    # 這一步不需要先載入 joblib/pandas，能快速確認部署設定是否正確。
-    status = inspect_model_status()
-    print("=== predict_service 自我檢查 ===")
-    for key, path in status["paths"].items():
-        state = "OK" if status["exists"][key] else "MISSING"
-        print(f"- {key}: {path} [{state}]")
-    print(f"ready: {status['ready']}")
-    if not status["ready"]:
-        print("提示：若你要跑 ML 推論，請先放好三個模型檔，並確認 pip install -r requirements.txt。")

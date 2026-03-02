@@ -8,14 +8,7 @@
 ---
 
 ## 1) 先確認「模型和腳本」有沒有接好
-
-### 為什麼要先做這步？（初學者版）
-部署失敗最常見原因不是程式語法，而是：
-- 程式找不到模型檔
-- 檔名對了但路徑不對
-- 環境變數沒設定
-
-所以先做「連結檢查」，你會更快定位問題。
+先做「連結檢查」，你會更快定位問題。
 
 ### 你的程式現在怎麼連模型
 `predict_service.py` 會讀三個路徑：
@@ -27,8 +20,11 @@
 
 ### 本機檢查指令
 ```bash
+
 python scripts/check_model_link.py  # 可在專案根目錄直接執行
-# 或：python predict_service.py  # 內建自我檢查
+
+python scripts/check_model_link.py
+
 ```
 
 你會看到每個檔案是 `[OK]` 還是 `[MISSING]`。
@@ -135,8 +131,11 @@ pip install -r requirements.txt
 3. 先檢查模型路徑（這一步可以快速抓出 80% 的部署問題）：
 
 ```bash
+
 python scripts/check_model_link.py  # 可在專案根目錄直接執行
-# 或：python predict_service.py  # 內建自我檢查
+
+python scripts/check_model_link.py
+
 ```
 
 4. 啟動服務：
