@@ -111,6 +111,60 @@ git push origin <你的分支或main>
 
 ---
 
+
+## 6) 可以在 GitHub Codespaces 測試嗎？可以，而且很適合初學者
+
+可以，**非常建議**。
+
+### 為什麼 Codespaces 很適合你現在的階段
+- 不用先在自己電腦安裝一堆版本（Python/套件衝突會少很多）。
+- 測試環境在雲端，跟部署思維更接近。
+- 你可以直接把同一份程式推到 GitHub，再接 Render。
+
+### Codespaces 實作步驟
+1. 到 GitHub repo 頁面，按 **Code → Codespaces → Create codespace on main**。
+2. 開終端機後執行：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. 先檢查模型路徑（這一步可以快速抓出 80% 的部署問題）：
+
+```bash
+python scripts/check_model_link.py
+```
+
+4. 啟動服務：
+
+```bash
+MODEL_MODE=rule python app.py
+```
+
+5. 在 Codespaces 的 **Ports** 面板把 `5000` 設為 Public，點開瀏覽器。
+6. 驗收 API：
+   - `/health`
+   - `/app/model-status`
+   - `/app/predict?locationName=臺北`
+
+### 如果你要在 Codespaces 測 `MODEL_MODE=ml`
+- 你需要把三個模型檔放到 repo（或下載到 `models/`）
+- 並設定：
+
+```bash
+export MODEL_MODE=ml
+export KNN_IMPUTER_PATH=models/kNN_imputer.joblib
+export MINMAX_SCALER_PATH=models/MMscaler.joblib
+export MODEL_PATH=models/rf_model.joblib
+python app.py
+```
+
+初學者建議流程：**先 rule 成功，再切 ml**，每次只改一件事，最不容易卡住。
+
+---
+
 ## 5) 程式檔案分工（幫你建立維護習慣）
 - `app.py`：路由/API 與主流程控制
 - `predict_service.py`：模型路徑、載入、推論邏輯
