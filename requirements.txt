@@ -1,9 +1,14 @@
-pandas==2.2.2
-numpy==1.26.4
-scikit-learn==1.4.2
-joblib==1.3.2
-Flask==3.0.3
-line-bot-sdk==3.11.0
-requests==2.32.3
-python-dotenv==1.0.1
-openpyxl==3.1.5
+# 初學者說明：
+# 先用「範圍版本」避免不同平台/不同 Python 小版本時，
+# 因為單一 pin 版本太硬而出現 ResolutionImpossible。
+
+pandas>=2.2,<2.4
+numpy>=1.26,<2.1
+scikit-learn>=1.4,<1.6
+joblib>=1.3,<1.5
+Flask>=3.0,<3.1
+line-bot-sdk>=3.11,<4
+requests>=2.31,<3
+python-dotenv>=1.0,<2
+openpyxl>=3.1,<4
+gunicorn>=22,<23

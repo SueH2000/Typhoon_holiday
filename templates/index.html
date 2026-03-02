@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>颱風假預測 App</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>颱風假預測 App</h1>
+      <p class="hint">可直接在手機瀏覽器開啟，會依縣市與鄉鎮區查詢即時天氣並預測。</p>
+
+      <label for="countySelect">選擇縣市</label>
+      <select id="countySelect"></select>
+
+      <label for="locationSelect">選擇地點</label>
+      <select id="locationSelect"></select>
+
+      <button id="predictBtn">查詢最新預測</button>
+
+      <section id="result" class="card hidden"></section>
+      <p id="error" class="error"></p>
+    </main>
+
+    <script>
+      const countySelect = document.getElementById('countySelect');
+      const locationSelect = document.getElementById('locationSelect');
+      const predictBtn = document.getElementById('predictBtn');
+      const resultEl = document.getElementById('result');
+      const errorEl = document.getElementById('error');
+
+      async function loadCounties() {
+        const response = await fetch('/app/counties');
+        const data = await response.json();
+
+        if (!data.ok) {
+          throw new Error(data.error || '無法載入縣市');
+        }
+
+        countySelect.innerHTML = data.counties
+          .map((name) => `<option value="${name}">${name}</option>`)
+          .join('');
+      }
+
+      async function loadLocationsByCounty() {
+        const county = countySelect.value;
+        const response = await fetch(`/app/locations?county=${encodeURIComponent(county)}`);
+        const data = await response.json();
+
+        if (!data.ok) {
+          throw new Error(data.error || '無法載入地點');
+        }
+
+        locationSelect.innerHTML = data.locations
+          .map((name) => `<option value="${name}">${name}</option>`)
+          .join('');
+      }
+
+      async function predict() {
+        const county = countySelect.value;
+        const locationName = locationSelect.value;
+
+        errorEl.textContent = '';
+        resultEl.classList.add('hidden');
+
+        const response = await fetch(
+          `/app/predict?county=${encodeURIComponent(county)}&locationName=${encodeURIComponent(locationName)}`,
+        );
+        const data = await response.json();
+
+        if (!data.ok) {
+          throw new Error(data.error || '預測失敗');
+        }
+
+        resultEl.innerHTML = `
+          <h2>${data.county}｜${data.locationName}</h2>
+          <p>天氣：${data.weather.description}</p>
+          <p>溫度：${data.weather.temperature_c} °C</p>
+          <p>雨量：${data.weather.rainfall_mm} mm</p>
+          <p>風速：${data.weather.wind_speed_mps} m/s</p>
+          <p><strong>放假機率：${data.dayoff_probability}%</strong></p>
+          <p>建議：${data.advice}</p>
+        `;
+        resultEl.classList.remove('hidden');
+      }
+
+      countySelect.addEventListener('change', async () => {
+        try {
+          await loadLocationsByCounty();
+        } catch (error) {
+          errorEl.textContent = error.message;
+        }
+      });
+
+      predictBtn.addEventListener('click', async () => {
+        try {
+          await predict();
+        } catch (error) {
+          errorEl.textContent = error.message;
+        }
+      });
+
+      async function bootstrap() {
+        errorEl.textContent = '';
+        await loadCounties();
+        await loadLocationsByCounty();
+      }
+
+      bootstrap().catch((error) => {
+        errorEl.textContent = error.message;
+      });
+    </script>
+  </body>
+</html>
