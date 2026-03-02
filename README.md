@@ -27,7 +27,11 @@
 
 ### 本機檢查指令
 ```bash
+
 python scripts/check_model_link.py  # 可在專案根目錄直接執行
+
+python scripts/check_model_link.py
+
 ```
 
 你會看到每個檔案是 `[OK]` 還是 `[MISSING]`。
@@ -134,7 +138,11 @@ pip install -r requirements.txt
 3. 先檢查模型路徑（這一步可以快速抓出 80% 的部署問題）：
 
 ```bash
+
 python scripts/check_model_link.py  # 可在專案根目錄直接執行
+
+python scripts/check_model_link.py
+
 ```
 
 4. 啟動服務：
