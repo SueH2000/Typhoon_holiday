@@ -43,18 +43,6 @@ GET /app/model-status
 ---
 
 
-### 如果你在 Codespaces 安裝套件時遇到 `ResolutionImpossible`
-這通常是「版本鎖太死」或「網路/鏡像暫時抓不到套件」造成。
-
-建議排查順序（初學者好記版）：
-1. 先更新 pip：`python -m pip install --upgrade pip`
-2. 用範圍版本安裝：`python -m pip install -r requirements.txt`
-3. 若你只想先跑網站流程，可先安裝最小集合：
-   `python -m pip install Flask gunicorn requests`
-4. 最後再補 ML 套件（pandas/numpy/scikit-learn/joblib）。
-
-> 觀念：先讓服務跑起來，再補模型依賴，除錯會快很多。
-
 ## 2) 本機啟動
 
 ```bash
@@ -123,15 +111,6 @@ git push origin <你的分支或main>
 ---
 
 
-## 6) 可以在 GitHub Codespaces 測試嗎？可以，而且很適合初學者
-
-可以，**非常建議**。
-
-### 為什麼 Codespaces 很適合你現在的階段
-- 不用先在自己電腦安裝一堆版本（Python/套件衝突會少很多）。
-- 測試環境在雲端，跟部署思維更接近。
-- 你可以直接把同一份程式推到 GitHub，再接 Render。
-
 ### Codespaces 實作步驟
 1. 到 GitHub repo 頁面，按 **Code → Codespaces → Create codespace on main**。
 2. 開終端機後執行：
@@ -173,8 +152,6 @@ export MODEL_PATH=models/rf_model.joblib
 python app.py
 ```
 
-初學者建議流程：**先 rule 成功，再切 ml**，每次只改一件事，最不容易卡住。
-
 ---
 
 ## 5) 程式檔案分工（幫你建立維護習慣）
@@ -182,5 +159,3 @@ python app.py
 - `predict_service.py`：模型路徑、載入、推論邏輯
 - `scripts/check_model_link.py`：部署前後快速檢查模型連結
 - `templates/index.html` + `static/style.css`：手機前端
-
-把「模型邏輯」和「Web 邏輯」拆開，是很重要的工程習慣。
